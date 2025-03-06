@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HungrySG - Pacman Game</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Press Start 2P', cursive;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background-image: url('https://www.transparenttextures.com/patterns/asfalt-dark.png'); /* Textura de fondo */
+      color: #fff;
+    }
+
+    h1 {
+      font-size: 48px;
+      color: #ffcc00;
+      margin-bottom: 20px;
+      text-shadow: 2px 2px 5px #000;
+    }
+
+    #instructions {
+      margin-bottom: 10px;
+      font-size: 20px;
+      color: #ffdd00;
+    }
+
+    #score {
+      margin: 15px 0;
+      font-size: 22px;
+      color: #fff;
+    }
+
+    #game-container {
+      display: grid;
+      grid-template-columns: repeat(10, 50px);
+      grid-template-rows: repeat(10, 50px);
+      gap: 4px;
+      background-color: #000;
+      border: 5px solid #ffdd00;
+      border-radius: 15px;
+      padding: 10px;
+      box-shadow: 0 0 20px #ffcc00;
+      transition: transform 0.3s; /* Transición suave */
+    }
+
+    #game-container:hover {
+      transform: scale(1.05); /* Efecto de aumento al pasar el ratón */
+    }
+
+    .cell {
+      width: 50px;
+      height: 50px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 28px;
+      background-color: #333;
+      border-radius: 5px;
+      color: #fff;
+      transition: background-color 0.3s; /* Transición suave */
+    }
+
+    .cell:hover {
+      background-color: #555; /* Efecto hover */
+    }
+
+    .wall {
+      background-color: #444;
+    }
+
+    .food {
+      color: #ffc400;
+    }
+
+    #message-overlay {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      background: rgba(0, 0, 0, 0.8);
+      padding: 20px;
+      border: 3px solid gold;
+      border-radius: 10px;
+      box-shadow: 0 0 20px gold;
+    }
+
+    #message-overlay h1 {
+      font-size: 30px;
+      color: yellow;
+      margin-bottom: 10px;
+    }
+
+    #message-overlay h2 {
+      font-size: 20px;
+      color: white;
+      margin-bottom: 20px;
+    }
+
+    #win-number {
+      font-size: 28px;
+      color: #ffcc00;
+      margin-top: 10px;
+    }
+
+    .overlay-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .overlay-button {
+      padding: 10px 20px;
+      background: gold;
+      color: black;
+      font-size: 18px;
+      font-weight: bold;
+      border-radius: 5px;
+      border: none;
+      cursor: pointer;
+      transition: background-color 0.3s; /* Transición suave */
+    }
+
+    .overlay-button:hover {
+      background: #ffdd00; /* Efecto hover */
+    }
+
+    #play-music {
+      margin: 15px 0;
+      background: gold;
+      color: black;
+      font-size: 20px;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      box-shadow: 0 0 10px #ffcc00;
+      transition: background-color 0.3s; /* Transición suave */
+    }
+
+    #play-music:hover {
+      background: #ffdd00; /* Efecto hover */
+    }
+  </style>
+</head>
+<body>
+  <h1>HungrySG</h1>
+  <div id="instructions">Eat 50 cherries to win!</div>
+  <div id="score">Score: 0</div>
+  <div id="game-container"></div>
+  <button id="play-music">Play Music 🎵</button>
+
+  <div id="message-overlay">
+    <h1 id="win-message">You Win!</h1>
+    <div id="win-number">9911</div>
+    <h2 id="god-mode-win-message" style="display: none;">Seriously, did you think you would get more links?</h2>
+    <div class="overlay-buttons">
+      <button class="overlay-button" id="play-again">Play Again</button>
+      <button class="overlay-button" id="god-mode" style="display: none;">God Mode</button>
+      <button class="overlay-button" id="infinite-mode" style="display: none;">Infinite Mode</button>
+    </div>
+  </div>
+
+  <!-- Audios -->
+  <audio id="game-music" src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" loop></audio>
+  <audio id="lose-music" src="https://assets.mixkit.co/sfx/preview/mixkit-losing-bleeps-2026.mp3"></audio>
+  <audio id="win-music" src="https://assets.mixkit.co/sfx/preview/mixkit-winning-notification-2018.mp3"></audio>
+
+  <script>
+    const container = document.getElementById("game-container");
+    const scoreDisplay = document.getElementById("score");
+    const messageOverlay = document.getElementById("message-overlay");
+    const playMusicButton = document.getElementById("play-music");
+    const playAgainButton = document.getElementById("play-again");
+    const godModeButton = document.getElementById("god-mode");
+    const infiniteModeButton = document.getElementById("infinite-mode");
+    const godModeWinMessage = document.getElementById("god-mode-win-message");
+    const gameMusic = document.getElementById("game-music");
+    const winMusic = document.getElementById("win-music");
+    const loseMusic = document.getElementById("lose-music");
+
+    const gridSize = 10;
+    let score = 0;
+    const winScore = 50;
+    let totalFood = 0;
+    let enemyInterval;
+    let isGodMode = false; // Estado del juego
+
+    const grid = [];
+    const cellState = [];
+
+    /** Inicialización del juego **/
+    function resetGame() {
+      score = 0;
+      totalFood = 0;
+      clearInterval(enemyInterval); // Detener los enemigos anteriores
+      gameMusic.currentTime = 0; // Reiniciar música
+      gameMusic.play(); // Comenzar música principal
+      createGrid();
+      placePacman();
+      placeEnemies();
+      messageOverlay.style.display = "none";
+      scoreDisplay.textContent = `Score: ${score}`;
+      godModeButton.style.display = "inline-block"; // Mostrar God Mode siempre
+      infiniteModeButton.style.display = "none"; // Ocultar Infinite Mode
+      godModeWinMessage.style.display = "none"; // Ocultar mensaje God Mode
+      document.getElementById("win-number").style.display = "none"; // Ocultar el número al reiniciar
+    }
+
+    function createGrid() {
+      container.innerHTML = ""; // Limpiar el contenedor
+      for (let i = 0; i < gridSize; i++) {
+        grid[i] = [];
+        cellState[i] = [];
+        for (let j = 0; j < gridSize; j++) {
+          const cell = document.createElement("div");
+          cell.classList.add("cell");
+
+          if (i === 0 || j === 0 || i === gridSize - 1 || j === gridSize - 1) {
+            cell.classList.add("wall");
+            cellState[i][j] = "wall";
+          } else {
+            cell.classList.add("food");
+            cell.textContent = "🍒";
+            cellState[i][j] = "food";
+            totalFood++;
+          }
+
+          container.appendChild(cell);
+          grid[i][j] = cell;
+        }
+      }
+    }
+
+    /** Variables principales **/
+    let pacman = { x: 1, y: 1 };
+    let enemies = [
+      { x: gridSize - 2, y: gridSize - 2, emoji: "👻" },
+      { x: 1, y: gridSize - 2, emoji: "👹" },
+      { x: gridSize - 2, y: 1, emoji: "💀" },
+    ];
+
+    function placePacman() {
+      pacman = { x: 1, y: 1 };
+      grid[pacman.x][pacman.y].textContent = "😋";
+      cellState[pacman.x][pacman.y] = "empty";
+    }
+
+    function placeEnemies() {
+      enemies.forEach((enemy) => {
+        grid[enemy.x][enemy.y].textContent = enemy.emoji;
+      });
+    }
+
+    function moveEnemies(speed) {
+      clearInterval(enemyInterval);
+      enemyInterval = setInterval(() => {
+        enemies.forEach((enemy) => {
+          grid[enemy.x][enemy.y].textContent =
+            cellState[enemy.x][enemy.y] === "food" ? "🍒" : "";
+
+          const direction = Math.floor(Math.random() * 4); // Movimiento aleatorio
+          let newX = enemy.x;
+          let newY = enemy.y;
+
+          if (direction === 0) newX--;
+          if (direction === 1) newX++;
+          if (direction === 2) newY--;
+          if (direction === 3) newY++;
+
+          // Validar movimientos
+          if (!grid[newX][newY]?.classList.contains("wall")) {
+            enemy.x = newX;
+            enemy.y = newY;
+          }
+
+          grid[enemy.x][enemy.y].textContent = enemy.emoji;
+
+          // Detectar colisión
+          if (enemy.x === pacman.x && enemy.y === pacman.y) {
+            showLoseScreen();
+          }
+        });
+      }, speed);
+    }
+
+    function showWinScreen() {
+      messageOverlay.style.display = "block";
+      gameMusic.pause();
+      winMusic.play(); // Reproducir música de victoria
+      document.getElementById("win-number").style.display = "block"; // Mostrar el número 9911
+      playAgainButton.style.display = "inline-block"; // Mostrar "Play Again"
+
+      if (isGodMode) {
+        godModeWinMessage.style.display = "block"; // Mostrar mensaje de God Mode
+        infiniteModeButton.style.display = "inline-block"; // Mostrar el botón Infinite Mode
+      }
+    }
+
+    function showLoseScreen() {
+      gameMusic.pause();
+      loseMusic.play(); // Reproducir música de pérdida
+      messageOverlay.style.display = "block";
+      document.getElementById("win-message").textContent = "You lost!";
+      godModeButton.style.display = "none"; // Ocultar God Mode
+      infiniteModeButton.style.display = "none"; // Ocultar Infinite Mode
+      playAgainButton.style.display = "inline-block"; // Mostrar botón "Play Again"
+      document.getElementById("win-number").style.display = "none"; // Ocultar número 9911 al perder
+    }
+
+    document.addEventListener("keydown", (e) => {
+      let newX = pacman.x;
+      let newY = pacman.y;
+
+      if (e.key === "ArrowUp") newX--;
+      if (e.key === "ArrowDown") newX++;
+      if (e.key === "ArrowLeft") newY--;
+      if (e.key === "ArrowRight") newY++;
+
+      if (grid[newX][newY]?.classList.contains("wall")) return;
+
+      grid[pacman.x][pacman.y].textContent = "";
+      pacman.x = newX;
+      pacman.y = newY;
+
+      if (cellState[pacman.x][pacman.y] === "food") {
+        cellState[pacman.x][pacman.y] = "empty";
+        score++;
+        totalFood--;
+
+        scoreDisplay.textContent = `Score: ${score}`;
+      }
+
+      grid[pacman.x][pacman.y].textContent = "😋";
+
+      // Ganar el juego
+      if (score >= winScore) {
+        clearInterval(enemyInterval);
+        showWinScreen();
+      }
+    });
+
+    playAgainButton.addEventListener("click", () => {
+      resetGame();
+      moveEnemies(isGodMode ? 200 : (infiniteModeButton.style.display === "inline-block" ? 100 : 500)); // Reiniciar en el mismo modo
+    });
+
+    godModeButton.addEventListener("click", () => {
+      isGodMode = true;
+      resetGame();
+      moveEnemies(200); // Velocidad rápida
+    });
+
+    infiniteModeButton.addEventListener("click", () => {
+      resetGame();
+      moveEnemies(100); // Velocidad rápida
+    });
+
+    playMusicButton.addEventListener("click", () => {
+      gameMusic.play();
+      playMusicButton.style.display = "none";
+    });
+
+    resetGame(); // Inicializar el juego
+    moveEnemies(500); // Velocidad inicial
+  </script>
+</body>
+</html>
